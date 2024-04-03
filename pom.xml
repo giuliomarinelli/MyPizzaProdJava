@@ -13,7 +13,7 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <mainClass>backendapp.myPizza.MyPizzaApplication</mainClass>
-                    <layout>WAR</layout>
+                    <layout>JAR</layout>
                 </configuration>
             </plugin>
         </plugins>
