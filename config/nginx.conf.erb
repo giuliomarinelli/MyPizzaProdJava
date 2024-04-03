@@ -1,0 +1,65 @@
+daemon off;
+# Heroku dynos have at least 4 cores
+worker_processes = 4;
+
+
+
+events {
+    use epoll;
+    accept_mutex on;
+    worker_connections <%= ENV['NGINX_WORKER_CONNECTIONS'] || 1024 %>;
+}
+
+http {
+    gzip on;
+    gzip_comp_level 2;
+    gzip_min_length 512;
+    server_tokens off;
+
+    log_format main '$time_iso8601 - $status $request - client IP: $http_x_forwarded_for - to $upstream_addr - upstream status: $upstream_status, upstream_response_time $upstream_response_time, request_time $request_time';
+    access_log /dev/stdout main;
+    # set the following to "debug" when diagnosing an issue
+    error_log /dev/stdout notice;
+    log_not_found on;
+
+    include mime.types;
+    default_type application/octet-stream;
+    sendfile off;
+
+    # Must read the body in 5 seconds.
+    client_body_timeout <%= ENV['NGINX_CLIENT_BODY_TIMEOUT'] || 5 %>;
+
+    # handle SNI
+    proxy_ssl_server_name on;
+    # resolver needs to be set because we're using dynamic proxy_pass
+    resolver 8.8.8.8;
+
+    upstream socket_io {
+            server localhost:8085;
+        }
+
+        upstream tomcat {
+            server localhost:<%= ENV["PORT"] %>;
+        }
+
+    server {
+        listen 443;
+
+        error_log stderr;
+        access_log /dev/stdout;
+        server_name _;
+
+        location /socket.io {
+                    proxy_pass http://socket_io;
+                    proxy_set_header Host my-pizza-22a84db2dd71.herokuapp.com;
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade $http_upgrade;
+                    proxy_set_header Connection "upgrade";
+                }
+
+                location / {
+                    proxy_pass http://tomcat;
+                    proxy_set_header Host my-pizza-22a84db2dd71.herokuapp.com;
+                }
+    }
+}
